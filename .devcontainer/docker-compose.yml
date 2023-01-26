@@ -66,14 +66,12 @@ services:
 
   nats-init:
     image: natsio/nats-box
-    environment:
-      - NSC_HOME=/nsc
     volumes:
       - ./nsc:/nsc
       - ./nats:/nats
       - ./scripts:/scripts
     command:
-      - /scripts/nats_init.sh
+      - "/scripts/nats_init.sh"
 
   nats:
     image: 'nats:alpine'

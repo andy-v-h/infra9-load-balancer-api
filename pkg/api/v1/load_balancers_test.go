@@ -147,7 +147,6 @@ func TestLoadBalancerRoutes(t *testing.T) {
 		name:   "happy path",
 		path:   baseURL,
 		status: http.StatusOK,
-		method: http.MethodGet,
 		tenant: tenantID,
 	})
 
@@ -155,7 +154,6 @@ func TestLoadBalancerRoutes(t *testing.T) {
 		name:   "happy path nemo by name",
 		path:   baseURL + "?display_name=Nemo",
 		status: http.StatusOK,
-		method: http.MethodGet,
 		tenant: tenantID,
 	})
 
@@ -163,7 +161,6 @@ func TestLoadBalancerRoutes(t *testing.T) {
 		name:   "happy path nemo by ip",
 		path:   baseURL + "?ip_addr=1.1.1.1",
 		status: http.StatusOK,
-		method: http.MethodGet,
 		tenant: tenantID,
 	})
 
