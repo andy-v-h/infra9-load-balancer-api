@@ -38,7 +38,8 @@ RUN go install -v github.com/cweill/gotests/gotests@v1.6.0 \
     && go install github.com/volatiletech/sqlboiler/v4/drivers/sqlboiler-psql@latest \
     && go install github.com/glerchundi/sqlboiler-crdb/v4@latest \
     && go install github.com/nats-io/natscli/nats@v${NATS_CLI_VERSION} \
-    && go install github.com/nats-io/nkeys/nk@latest
+    && go install github.com/nats-io/nkeys/nk@latest \
+    && go get entgo.io/contrib/entgql@master
 
 # [Optional] Uncomment this line to install global node packages.
 # RUN su vscode -c "source /usr/local/share/nvm/nvm.sh && npm install -g <your-package-here>" 2>&1
