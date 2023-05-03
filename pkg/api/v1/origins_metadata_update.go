@@ -10,21 +10,21 @@ import (
 	"go.infratographer.com/load-balancer-api/internal/models"
 )
 
-// metadataUpdate updates an metadata about a load balancer
-func (r *Router) metadataUpdate(c echo.Context) error {
+// lbMetadataUpdate updates an metadata about a load balancer
+func (r *Router) oMetadataUpdate(c echo.Context) error {
 	ctx := c.Request().Context()
 
-	mods, err := r.metadataParamsBinding(c)
+	mods, err := r.oMetadataParamsBinding(c)
 	if err != nil {
 		r.logger.Error("failed to bind metadata params", zap.Error(err))
 		return v1BadRequestResponse(c, err)
 	}
 
-	mods = append(mods, qm.Load("LoadBalancer"))
+	mods = append(mods, qm.Load("Origin"))
 
-	mds, err := models.LoadBalancerMetadata(mods...).All(ctx, r.db)
+	mds, err := models.OriginMetadata(mods...).All(ctx, r.db)
 	if err != nil {
-		r.logger.Error("failed to get port", zap.Error(err))
+		r.logger.Error("failed to get metadata", zap.Error(err))
 		return v1InternalServerErrorResponse(c, err)
 	}
 
@@ -48,24 +48,24 @@ func (r *Router) metadataUpdate(c echo.Context) error {
 	// update origin
 	metadata.Data = payload.Data
 
-	return r.updateMetadata(c, metadata)
+	return r.updateOMetadata(c, metadata)
 }
 
-// metadataPatch patches an origin
-func (r *Router) metadataPatch(c echo.Context) error {
+// lbMetadataPatch patches an origin
+func (r *Router) oMetadataPatch(c echo.Context) error {
 	ctx := c.Request().Context()
 
-	mods, err := r.metadataParamsBinding(c)
+	mods, err := r.oMetadataParamsBinding(c)
 	if err != nil {
 		r.logger.Error("failed to bind metadata params", zap.Error(err))
 		return v1BadRequestResponse(c, err)
 	}
 
-	mods = append(mods, qm.Load("LoadBalancer"))
+	mods = append(mods, qm.Load("Origin"))
 
-	mds, err := models.LoadBalancerMetadata(mods...).All(ctx, r.db)
+	mds, err := models.OriginMetadata(mods...).All(ctx, r.db)
 	if err != nil {
-		r.logger.Error("failed to get port", zap.Error(err))
+		r.logger.Error("failed to get metadata", zap.Error(err))
 		return v1InternalServerErrorResponse(c, err)
 	}
 
@@ -91,16 +91,16 @@ func (r *Router) metadataPatch(c echo.Context) error {
 		metadata.Data = *payload.Data
 	}
 
-	return r.updateMetadata(c, metadata)
+	return r.updateOMetadata(c, metadata)
 }
 
-func (r *Router) updateMetadata(c echo.Context, metadata *models.LoadBalancerMetadatum) error {
+func (r *Router) updateOMetadata(c echo.Context, metadata *models.OriginMetadatum) error {
 	ctx := c.Request().Context()
 
 	if _, err := metadata.Update(ctx, r.db, boil.Infer()); err != nil {
-		r.logger.Error("failed to update port", zap.Error(err))
+		r.logger.Error("failed to update metadata", zap.Error(err))
 		return v1InternalServerErrorResponse(c, err)
 	}
 
-	return v1UpdateMetadataResponse(c, metadata.MetadataID)
+	return v1UpdateLBMetadataResponse(c, metadata.MetadataID)
 }

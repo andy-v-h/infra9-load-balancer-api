@@ -26,17 +26,34 @@ func (r *Router) addLoadBalancerRoutes(g *echo.Group) {
 
 // addMetadataRoutes adds the metadata routes to the router
 func (r *Router) addMetadataRoutes(g *echo.Group) {
-	g.GET("/metadata/:metadata_id", r.metadataGet)
-	g.GET("/loadbalancers/:load_balancer_id/metadata", r.metadataList)
+	r.addLBMetadataRoutes(g)
+	r.addOriginMetadataRoutes(g)
+}
 
-	g.POST("/loadbalancers/:load_balancer_id/metadata", r.metadataCreate)
+// lbMetadataRoutes adds the metadata routes to the router for load balancer
+func (r *Router) addLBMetadataRoutes(g *echo.Group) {
+	g.GET("/loadbalancers/:load_balancer_id/metadata", r.lbMeatadataList)
 
-	g.PUT("/loadbalancers/:load_balancer_id/metadata", r.metadataUpdate)
+	g.POST("/loadbalancers/:load_balancer_id/metadata", r.createLBMetadata)
 
-	g.PATCH("/loadbalancers/:load_balancer_id/metadata", r.metadataPatch)
+	g.PUT("/loadbalancers/:load_balancer_id/metadata", r.lbMetadataUpdate)
 
-	g.DELETE("/metadata/:metadata_id", r.metadataDelete)
-	g.DELETE("/loadbalancers/:load_balancer_id/metadata", r.metadataDelete)
+	g.PATCH("/loadbalancers/:load_balancer_id/metadata", r.lbMetadataPatch)
+
+	g.DELETE("/loadbalancers/:load_balancer_id/metadata", r.deleteLBMetadata)
+}
+
+// addOriginMetadataRoutes adds the metadata routes to the router for origin
+func (r *Router) addOriginMetadataRoutes(g *echo.Group) {
+	g.GET("/origins/:origin_id/metadata", r.oMetadataList)
+
+	g.POST("/origins/:origin_id/metadata", r.createOriginMetadata)
+
+	g.PUT("/origins/:origin_id/metadata", r.oMetadataUpdate)
+
+	g.PATCH("/origins/:origin_id/metadata", r.oMetadataPatch)
+
+	g.DELETE("/origins/:origin_id/metadata", r.deleteOriginMetadata)
 }
 
 // addOriginsRoutes adds the origins routes to the router

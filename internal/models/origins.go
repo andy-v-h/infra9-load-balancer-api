@@ -136,14 +136,17 @@ var OriginWhere = struct {
 
 // OriginRels is where relationship names are stored.
 var OriginRels = struct {
-	Pool string
+	Pool           string
+	OriginMetadata string
 }{
-	Pool: "Pool",
+	Pool:           "Pool",
+	OriginMetadata: "OriginMetadata",
 }
 
 // originR is where relationships are stored.
 type originR struct {
-	Pool *Pool `query:"Pool" param:"Pool" boil:"Pool" json:"Pool" toml:"Pool" yaml:"Pool"`
+	Pool           *Pool                `query:"Pool" param:"Pool" boil:"Pool" json:"Pool" toml:"Pool" yaml:"Pool"`
+	OriginMetadata OriginMetadatumSlice `query:"OriginMetadata" param:"OriginMetadata" boil:"OriginMetadata" json:"OriginMetadata" toml:"OriginMetadata" yaml:"OriginMetadata"`
 }
 
 // NewStruct creates a new relationship struct
@@ -156,6 +159,13 @@ func (r *originR) GetPool() *Pool {
 		return nil
 	}
 	return r.Pool
+}
+
+func (r *originR) GetOriginMetadata() OriginMetadatumSlice {
+	if r == nil {
+		return nil
+	}
+	return r.OriginMetadata
 }
 
 // originL is where Load methods for each relationship are stored.
@@ -455,6 +465,20 @@ func (o *Origin) Pool(mods ...qm.QueryMod) poolQuery {
 	return Pools(queryMods...)
 }
 
+// OriginMetadata retrieves all the origin_metadatum's OriginMetadata with an executor.
+func (o *Origin) OriginMetadata(mods ...qm.QueryMod) originMetadatumQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"origin_metadata\".\"origin_id\"=?", o.OriginID),
+	)
+
+	return OriginMetadata(queryMods...)
+}
+
 // LoadPool allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
 func (originL) LoadPool(ctx context.Context, e boil.ContextExecutor, singular bool, maybeOrigin interface{}, mods queries.Applicator) error {
@@ -576,6 +600,121 @@ func (originL) LoadPool(ctx context.Context, e boil.ContextExecutor, singular bo
 	return nil
 }
 
+// LoadOriginMetadata allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (originL) LoadOriginMetadata(ctx context.Context, e boil.ContextExecutor, singular bool, maybeOrigin interface{}, mods queries.Applicator) error {
+	var slice []*Origin
+	var object *Origin
+
+	if singular {
+		var ok bool
+		object, ok = maybeOrigin.(*Origin)
+		if !ok {
+			object = new(Origin)
+			ok = queries.SetFromEmbeddedStruct(&object, &maybeOrigin)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeOrigin))
+			}
+		}
+	} else {
+		s, ok := maybeOrigin.(*[]*Origin)
+		if ok {
+			slice = *s
+		} else {
+			ok = queries.SetFromEmbeddedStruct(&slice, maybeOrigin)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeOrigin))
+			}
+		}
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &originR{}
+		}
+		args = append(args, object.OriginID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &originR{}
+			}
+
+			for _, a := range args {
+				if a == obj.OriginID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.OriginID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`origin_metadata`),
+		qm.WhereIn(`origin_metadata.origin_id in ?`, args...),
+		qmhelper.WhereIsNull(`origin_metadata.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.QueryContext(ctx, e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load origin_metadata")
+	}
+
+	var resultSlice []*OriginMetadatum
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice origin_metadata")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on origin_metadata")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for origin_metadata")
+	}
+
+	if len(originMetadatumAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.OriginMetadata = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &originMetadatumR{}
+			}
+			foreign.R.Origin = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.OriginID == foreign.OriginID {
+				local.R.OriginMetadata = append(local.R.OriginMetadata, foreign)
+				if foreign.R == nil {
+					foreign.R = &originMetadatumR{}
+				}
+				foreign.R.Origin = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetPool of the origin to the related item.
 // Sets o.R.Pool to related.
 // Adds o to related.R.Origins.
@@ -620,6 +759,59 @@ func (o *Origin) SetPool(ctx context.Context, exec boil.ContextExecutor, insert 
 		related.R.Origins = append(related.R.Origins, o)
 	}
 
+	return nil
+}
+
+// AddOriginMetadata adds the given related objects to the existing relationships
+// of the origin, optionally inserting them as new records.
+// Appends related to o.R.OriginMetadata.
+// Sets related.R.Origin appropriately.
+func (o *Origin) AddOriginMetadata(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*OriginMetadatum) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.OriginID = o.OriginID
+			if err = rel.Insert(ctx, exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"origin_metadata\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"origin_id"}),
+				strmangle.WhereClause("\"", "\"", 2, originMetadatumPrimaryKeyColumns),
+			)
+			values := []interface{}{o.OriginID, rel.MetadataID}
+
+			if boil.IsDebug(ctx) {
+				writer := boil.DebugWriterFrom(ctx)
+				fmt.Fprintln(writer, updateQuery)
+				fmt.Fprintln(writer, values)
+			}
+			if _, err = exec.ExecContext(ctx, updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.OriginID = o.OriginID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &originR{
+			OriginMetadata: related,
+		}
+	} else {
+		o.R.OriginMetadata = append(o.R.OriginMetadata, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &originMetadatumR{
+				Origin: o,
+			}
+		} else {
+			rel.R.Origin = o
+		}
+	}
 	return nil
 }
 

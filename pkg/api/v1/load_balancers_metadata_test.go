@@ -30,21 +30,22 @@ func testMetadataToString(t *testing.T, ns, data string) string {
 	return string(bytes)
 }
 
-func TestMetadataRoutes(t *testing.T) {
+func TestLBMetadataRoutes(t *testing.T) {
 	nsrv := newNatsTestServer(t, "load-balancer-api-test", "com.infratographer.events.>")
 	defer nsrv.Shutdown()
 
 	srv, _ := newTestServer(t, nsrv.ClientURL(), nil)
 	defer srv.Close()
 
-	lb, cleanupLoadBalancers := createLoadBalancer(t, srv, uuid.New().String())
+	lb, cleanupLoadBalancers := createLoadBalancer(t, srv, uuid.NewString())
 	defer cleanupLoadBalancers(t)
 
-	lb2, cleanupLoadBalancers2 := createLoadBalancer(t, srv, uuid.New().String())
+	lb2, cleanupLoadBalancers2 := createLoadBalancer(t, srv, uuid.NewString())
 	defer cleanupLoadBalancers2(t)
 
-	baseURL := srv.URL + "/v1/metadata"
-	baseURLLoadBalancer := srv.URL + "/v1/loadbalancers/" + lb.ID + "/metadata"
+	lbID1 := lb.ID
+	baseURLLoadBalancer := srv.URL + "/v1/loadbalancers/" + lbID1 + "/metadata"
+	badURL := srv.URL + "/v1/loadbalancers/" + uuid.NewString() + "/metadata"
 
 	testMetadata := struct {
 		Version string `json:"version"`
@@ -69,7 +70,7 @@ func TestMetadataRoutes(t *testing.T) {
 
 		assert.NoError(t, json.NewDecoder(resp1.Body).Decode(&testMetadata))
 
-		t.Logf("metadata: %+v", testMetadata)
+		t.Logf("!@!@!@!@!metadata: %+v", testMetadata)
 
 		fmt.Println("foo")
 
@@ -79,7 +80,7 @@ func TestMetadataRoutes(t *testing.T) {
 	// Clean up the rhyme last
 	defer doHTTPTest(t, &httpTest{
 		name:   "delete metadata get by id",
-		path:   baseURL + "/" + testMetadata.ID,
+		path:   baseURLLoadBalancer + "?metadata_id=" + testMetadata.ID,
 		status: http.StatusOK,
 		method: http.MethodDelete,
 	})
@@ -195,13 +196,6 @@ func TestMetadataRoutes(t *testing.T) {
 
 	// Get Tests
 	doHTTPTest(t, &httpTest{
-		name:   "get metadata get by id",
-		path:   baseURL + "/" + testMetadata.ID,
-		status: http.StatusOK,
-		method: http.MethodGet,
-	})
-
-	doHTTPTest(t, &httpTest{
 		name:   "get all metadata by lb id",
 		path:   baseURLLoadBalancer,
 		status: http.StatusOK,
@@ -249,7 +243,7 @@ func TestMetadataRoutes(t *testing.T) {
 	doHTTPTest(t, &httpTest{
 		name:   "patch metadata by bad id",
 		body:   `{ "data": {"roses":"red","violets":"blue"}}`,
-		path:   baseURL + "/1234/metadata?namespace=rhyme",
+		path:   badURL + "?namespace=rhyme",
 		status: http.StatusNotFound,
 		method: http.MethodPatch,
 	})
@@ -283,7 +277,7 @@ func TestMetadataRoutes(t *testing.T) {
 	doHTTPTest(t, &httpTest{
 		name:   "put metadata by bad id",
 		body:   testMetadataToString(t, "rhyme", `{"has_wool":true,"color":"black","greeting":"baa baa","quanity":2,"animal":"sheep"}`),
-		path:   baseURL + "/1234/metadata?namespace=rhyme",
+		path:   badURL + "?namespace=rhyme",
 		status: http.StatusNotFound,
 		method: http.MethodPut,
 	})
@@ -310,19 +304,5 @@ func TestMetadataRoutes(t *testing.T) {
 		path:   baseURLLoadBalancer,
 		method: http.MethodDelete,
 		status: http.StatusBadRequest,
-	})
-
-	doHTTPTest(t, &httpTest{
-		name:   "delete metadata get by bad id",
-		path:   baseURL + "/1234",
-		status: http.StatusBadRequest,
-		method: http.MethodDelete,
-	})
-
-	doHTTPTest(t, &httpTest{
-		name:   "bad delete metadata get by id",
-		path:   baseURL + "/" + uuid.New().String(),
-		status: http.StatusNotFound,
-		method: http.MethodDelete,
 	})
 }

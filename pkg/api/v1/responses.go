@@ -103,7 +103,7 @@ func v1UpdateOriginResponse(c echo.Context, id string) error {
 	})
 }
 
-func v1UpdateMetadataResponse(c echo.Context, id string) error {
+func v1UpdateLBMetadataResponse(c echo.Context, id string) error {
 	return c.JSON(http.StatusAccepted, struct {
 		Version    string `json:"version"`
 		Message    string `json:"message"`
@@ -419,7 +419,27 @@ func v1MetadataResponse(c echo.Context, m *models.LoadBalancerMetadatum) error {
 	})
 }
 
-func v1MetadatasResponse(c echo.Context, ms models.LoadBalancerMetadatumSlice) error {
+func v1LBMetadatasResponse(c echo.Context, ms models.LoadBalancerMetadatumSlice) error {
+	out := make(metadataSlice, len(ms))
+
+	for i, m := range ms {
+		out[i] = &metadata{
+			CreatedAt: m.CreatedAt,
+			UpdatedAt: m.UpdatedAt,
+			ID:        m.MetadataID,
+			Namespace: m.Namespace,
+			Data:      m.Data,
+		}
+	}
+
+	return c.JSON(http.StatusOK, &response{
+		Version:   apiVersion,
+		Kind:      "metadataList",
+		Metadatas: &out,
+	})
+}
+
+func v1OMetadatasResponse(c echo.Context, ms models.OriginMetadatumSlice) error {
 	out := make(metadataSlice, len(ms))
 
 	for i, m := range ms {

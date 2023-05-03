@@ -9,6 +9,7 @@ var TableNames = struct {
 	LoadBalancerMetadata string
 	LoadBalancerStatuses string
 	LoadBalancers        string
+	OriginMetadata       string
 	Origins              string
 	Pools                string
 	Ports                string
@@ -18,6 +19,7 @@ var TableNames = struct {
 	LoadBalancerMetadata: "load_balancer_metadata",
 	LoadBalancerStatuses: "load_balancer_statuses",
 	LoadBalancers:        "load_balancers",
+	OriginMetadata:       "origin_metadata",
 	Origins:              "origins",
 	Pools:                "pools",
 	Ports:                "ports",
