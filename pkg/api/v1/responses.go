@@ -405,20 +405,6 @@ func v1LoadBalancers(c echo.Context, lbs models.LoadBalancerSlice) error {
 	})
 }
 
-func v1MetadataResponse(c echo.Context, m *models.LoadBalancerMetadatum) error {
-	return c.JSON(http.StatusOK, &response{
-		Version: apiVersion,
-		Kind:    "metadataGet",
-		Metadata: &metadata{
-			CreatedAt: m.CreatedAt,
-			UpdatedAt: m.UpdatedAt,
-			ID:        m.MetadataID,
-			Namespace: m.Namespace,
-			Data:      m.Data,
-		},
-	})
-}
-
 func v1LBMetadatasResponse(c echo.Context, ms models.LoadBalancerMetadatumSlice) error {
 	out := make(metadataSlice, len(ms))
 
